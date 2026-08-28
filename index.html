@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kanban de Planejamento Estratégico</title>
+<style>
+  :root {
+    --bg: #101215;
+    --surface-1: #16191d;
+    --surface-2: #1c2025;
+    --border: #2a2f36;
+    --text: #f2f3f5;
+    --text-secondary: #b6bcc5;
+    --text-muted: #757c87;
+    --purple-fill: rgba(167,139,250,0.14);
+    --purple-text: #b9a6ff;
+    --purple-mid: #8b7cf6;
+    --amber-fill: rgba(251,191,36,0.14);
+    --amber-text: #fbcb63;
+    --amber-mid: #f0a825;
+    --teal-fill: rgba(45,212,191,0.14);
+    --teal-text: #6fe4d1;
+    --teal-mid: #22b8a0;
+    --danger: #f2555a;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 28px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+  .top-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  h1 { font-size: 18px; font-weight: 600; margin: 0; }
+  #save-indicator { font-size: 12px; color: var(--text-muted); }
+  .progress-bar {
+    display: flex;
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--surface-1);
+    margin: 16px 0 20px;
+  }
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0,1fr));
+    gap: 14px;
+  }
+  @media (max-width: 720px) { .board { grid-template-columns: 1fr; } }
+  .col-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; border-radius: var(--radius); margin-bottom: 10px;
+  }
+  .col-header .count {
+    margin-left: auto; font-size: 12px; font-weight: 600;
+    background: var(--surface-2); padding: 1px 9px; border-radius: 999px;
+  }
+  .kcards { display: flex; flex-direction: column; gap: 10px; min-height: 30px; }
+  .kcard {
+    background: var(--surface-2);
+    border: 0.5px solid var(--border);
+    border-top: 3px solid transparent;
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    cursor: grab;
+  }
+  .kcard.dragging { opacity: 0.4; }
+  .card-top-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; }
+  .title-input {
+    border: none; background: none; outline: none; padding: 0;
+    font-size: 13px; font-weight: 600; color: var(--text); flex: 1; min-width: 0;
+  }
+  .icon-btn {
+    border: none; background: none; padding: 2px; cursor: pointer;
+    color: var(--text-muted); flex-shrink: 0; font-size: 14px; line-height: 1;
+  }
+  .icon-btn:hover { color: var(--text); }
+  .note-input {
+    width: 100%; border: none; background: none; outline: none; resize: none;
+    padding: 6px 0 0; font-size: 12px; color: var(--text-secondary); font-family: inherit;
+  }
+  .note-input::placeholder { color: var(--text-muted); }
+  .attachments { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; }
+  .attachment-chip {
+    display: flex; align-items: center; gap: 6px; font-size: 11px;
+    color: var(--text-secondary); background: var(--surface-1); border-radius: 8px; padding: 4px 6px;
+  }
+  .attachment-chip a { color: var(--text-secondary); text-decoration: none; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .attachment-chip a:hover { color: var(--text); text-decoration: underline; }
+  .card-footer-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  .attach-btn { border: none; background: none; color: var(--text-muted); font-size: 13px; cursor: pointer; padding: 2px 0; }
+  .attach-btn:hover { color: var(--text-secondary); }
+  .add-btn {
+    width: 100%; margin-top: 10px; font-size: 13px; padding: 8px;
+    background: var(--surface-1); border: 0.5px solid var(--border); border-radius: var(--radius); cursor: pointer;
+  }
+  .add-btn:hover { background: var(--surface-2); }
+
+  #login-screen {
+    max-width: 320px; margin: 80px auto; display: flex; flex-direction: column; gap: 10px;
+  }
+  #login-screen input {
+    background: var(--surface-2); border: 0.5px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; color: var(--text); font-size: 14px; outline: none;
+  }
+  #login-screen button {
+    background: #fff; border: none; border-radius: 8px; color: #1f1f1f;
+    padding: 10px 12px; font-size: 14px; font-weight: 600; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+  }
+  #login-screen button:hover { background: #f1f1f1; }
+  #login-screen button svg { width: 18px; height: 18px; flex-shrink: 0; }
+  #login-hint { font-size: 12px; color: var(--text-muted); text-align: center; }
+  #login-error { color: var(--danger); font-size: 12px; min-height: 16px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <h1 style="margin-bottom:6px;">Kanban — Planejamento Estratégico</h1>
+  <button id="login-btn">
+    <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 8 3l6-6C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21 21-9.4 21-21c0-1.4-.1-2.8-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.9 18.9 13 24 13c3.1 0 5.8 1.1 8 3l6-6C34.6 5.1 29.6 3 24 3c-7.4 0-13.8 4.1-17.2 10.2z"/><path fill="#4CAF50" d="M24 45c5.5 0 10.4-1.9 14.2-5.1l-6.6-5.4C29.6 36.5 26.9 37.5 24 37.5c-5.2 0-9.6-3.3-11.3-7.9l-6.6 5.1C9.9 40.7 16.4 45 24 45z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.5l6.6 5.4C41.5 35.7 45 30.4 45 24c0-1.4-.1-2.8-.4-3.5z"/></svg>
+    Entrar com Google
+  </button>
+  <div id="login-error"></div>
+  <div id="login-hint">Só a sua conta Google tem acesso a este painel.</div>
+</div>
+
+<div class="wrap hidden" id="app-wrap">
+  <div class="top-row">
+    <h1>Planejamento Estratégico</h1>
+    <span id="save-indicator"></span>
+  </div>
+  <div class="progress-bar" id="progress-bar"></div>
+  <div class="board" id="board"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ====== Configuração do projeto Firebase (kanban-estrategico-html) ======
+const firebaseConfig = {
+  apiKey: "AIzaSyAUnNqVL2RoAzY8qAGA3rNqiYBG4e8JTuo",
+  authDomain: "kanban-estrategico-html.firebaseapp.com",
+  projectId: "kanban-estrategico-html",
+  storageBucket: "kanban-estrategico-html.firebasestorage.app",
+  messagingSenderId: "941899907892",
+  appId: "1:941899907892:web:a13b2c5321106d705e9b61"
+};
+// ==========================================================================
+
+const COLLECTION = "kanban_estrategico";
+const DOC_ID = "estado";
+const MAX_ATTACHMENT_BYTES = 600 * 1024; // ~600KB por arquivo (limite de doc do Firestore é 1MB no total)
+const MAX_DOC_BYTES = 900 * 1024; // margem de segurança antes do limite de 1MB do Firestore
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
+
+const loginScreen = document.getElementById('login-screen');
+const appWrap = document.getElementById('app-wrap');
+const loginError = document.getElementById('login-error');
+
+document.getElementById('login-btn').addEventListener('click', doLogin);
+
+function doLogin(){
+  loginError.textContent = '';
+  signInWithPopup(auth, googleProvider).catch(function(err){
+    if(err.code === 'auth/popup-closed-by-user') return;
+    loginError.textContent = 'Não foi possível entrar: ' + err.message;
+  });
+}
+
+onAuthStateChanged(auth, function(user){
+  if(user){
+    loginScreen.classList.add('hidden');
+    appWrap.classList.remove('hidden');
+    initKanban();
+  } else {
+    loginScreen.classList.remove('hidden');
+    appWrap.classList.add('hidden');
+  }
+});
+
+function initKanban(){
+  var COLUMNS = [
+    { id: 'ideias', label: 'Ideias', ramp: 'purple', icon: '💡' },
+    { id: 'andamento', label: 'Em andamento', ramp: 'amber', icon: '⏳' },
+    { id: 'concluido', label: 'Concluído', ramp: 'teal', icon: '✅' }
+  ];
+  var RAMP = {
+    purple: { fill: 'var(--purple-fill)', text: 'var(--purple-text)', mid: 'var(--purple-mid)' },
+    amber:  { fill: 'var(--amber-fill)', text: 'var(--amber-text)', mid: 'var(--amber-mid)' },
+    teal:   { fill: 'var(--teal-fill)', text: 'var(--teal-text)', mid: 'var(--teal-mid)' }
+  };
+
+  var defaultCards = [];
+
+  var state = { cards: [] };
+  var board = document.getElementById('board');
+  var progressBar = document.getElementById('progress-bar');
+  var saveIndicator = document.getElementById('save-indicator');
+  var dragId = null;
+  var pendingAttachCardId = null;
+  var docRef = doc(db, COLLECTION, DOC_ID);
+  var applyingRemote = false;
+
+  var fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.style.display = 'none';
+  document.body.appendChild(fileInput);
+
+  function uid(){ return 'c' + Math.random().toString(36).slice(2, 9); }
+
+  var saveTimer = null;
+  function persist(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){
+      var json = JSON.stringify(state.cards);
+      if(json.length > MAX_DOC_BYTES){
+        saveIndicator.textContent = 'não salvo — conteúdo muito grande (remova algum anexo)';
+        return;
+      }
+      setDoc(docRef, { cards: state.cards, updatedAt: Date.now() })
+        .then(showSaved)
+        .catch(function(err){ saveIndicator.textContent = 'erro ao salvar: ' + err.message; });
+    }, 400);
+  }
+
+  function showSaved(){
+    var now = new Date();
+    var hh = String(now.getHours()).padStart(2,'0');
+    var mm = String(now.getMinutes()).padStart(2,'0');
+    saveIndicator.textContent = 'sincronizado às ' + hh + ':' + mm;
+  }
+
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(m){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
+    });
+  }
+
+  function render(){
+    var total = state.cards.length || 1;
+    var barHtml = '';
+    COLUMNS.forEach(function(col){
+      var n = state.cards.filter(function(c){ return c.col === col.id; }).length;
+      var pct = (n / total) * 100;
+      if(n > 0){ barHtml += '<div style="width:'+pct+'%;background:'+RAMP[col.ramp].mid+';"></div>'; }
+    });
+    progressBar.innerHTML = barHtml;
+
+    var html = '';
+    COLUMNS.forEach(function(col){
+      var items = state.cards.filter(function(c){ return c.col === col.id; });
+      var ramp = RAMP[col.ramp];
+      html += '<div>';
+      html += '<div class="col-header" style="background:'+ramp.fill+';color:'+ramp.text+';">';
+      html += '<span>'+col.icon+'</span>';
+      html += '<span style="font-size:13px;font-weight:600;">'+col.label+'</span>';
+      html += '<span class="count">'+items.length+'</span>';
+      html += '</div>';
+      html += '<div class="kcards" data-col="'+col.id+'">';
+      items.forEach(function(card){
+        html += '<div class="kcard" draggable="true" data-id="'+card.id+'" style="border-top-color:'+ramp.mid+';">';
+        html += '  <div class="card-top-row">';
+        html += '    <input class="title-input" data-id="'+card.id+'" value="'+escapeHtml(card.title)+'" />';
+        html += '    <button class="icon-btn del-btn" data-id="'+card.id+'" title="Excluir card">✕</button>';
+        html += '  </div>';
+        html += '  <textarea class="note-input" data-id="'+card.id+'" placeholder="Adicionar observação..." rows="2">'+escapeHtml(card.note || '')+'</textarea>';
+        if(card.attachments && card.attachments.length){
+          html += '  <div class="attachments">';
+          card.attachments.forEach(function(att, i){
+            html += '    <div class="attachment-chip">';
+            html += '      <a href="'+att.dataUrl+'" download="'+escapeHtml(att.name)+'" title="'+escapeHtml(att.name)+'">📎 '+escapeHtml(att.name)+'</a>';
+            html += '      <button class="icon-btn remove-att-btn" data-id="'+card.id+'" data-idx="'+i+'" title="Remover anexo">✕</button>';
+            html += '    </div>';
+          });
+          html += '  </div>';
+        }
+        html += '  <div class="card-footer-row">';
+        html += '    <button class="attach-btn" data-id="'+card.id+'" title="Anexar arquivo">📎 Anexar</button>';
+        html += '  </div>';
+        html += '</div>';
+      });
+      html += '</div>';
+      html += '<button class="add-btn" data-col="'+col.id+'">＋ Adicionar</button>';
+      html += '</div>';
+    });
+    board.innerHTML = html;
+    attachEvents();
+  }
+
+  function autoGrow(el){ el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
+
+  function moveDraggedTo(targetCol, beforeCardId){
+    if(!dragId) return;
+    var idx = state.cards.findIndex(function(c){ return c.id === dragId; });
+    if(idx === -1) return;
+    var card = state.cards[idx];
+    state.cards.splice(idx, 1);
+    card.col = targetCol;
+    if(beforeCardId){
+      var insertAt = state.cards.findIndex(function(c){ return c.id === beforeCardId; });
+      if(insertAt === -1){ state.cards.push(card); } else { state.cards.splice(insertAt, 0, card); }
+    } else {
+      state.cards.push(card);
+    }
+    persist(); render();
+  }
+
+  function attachEvents(){
+    document.querySelectorAll('.kcard').forEach(function(el){
+      el.addEventListener('dragstart', function(e){ dragId = el.getAttribute('data-id'); el.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+      el.addEventListener('dragend', function(){ el.classList.remove('dragging'); });
+      el.addEventListener('dragover', function(e){ e.preventDefault(); e.stopPropagation(); });
+      el.addEventListener('drop', function(e){
+        e.preventDefault(); e.stopPropagation();
+        var targetId = el.getAttribute('data-id');
+        if(!dragId || dragId === targetId) return;
+        var rect = el.getBoundingClientRect();
+        var after = (e.clientY - rect.top) > rect.height / 2;
+        var col = el.closest('.kcards').getAttribute('data-col');
+        if(after){
+          var idx = state.cards.findIndex(function(c){ return c.id === targetId; });
+          var nextCard = state.cards[idx + 1];
+          moveDraggedTo(col, nextCard ? nextCard.id : null);
+        } else { moveDraggedTo(col, targetId); }
+        dragId = null;
+      });
+    });
+    document.querySelectorAll('.kcards').forEach(function(el){
+      el.addEventListener('dragover', function(e){ e.preventDefault(); });
+      el.addEventListener('drop', function(e){ e.preventDefault(); if(!dragId) return; moveDraggedTo(el.getAttribute('data-col'), null); dragId = null; });
+    });
+    document.querySelectorAll('.del-btn').forEach(function(el){
+      el.addEventListener('click', function(){
+        state.cards = state.cards.filter(function(c){ return c.id !== el.getAttribute('data-id'); });
+        persist(); render();
+      });
+    });
+    document.querySelectorAll('.title-input').forEach(function(el){
+      el.addEventListener('input', function(){
+        var card = state.cards.find(function(c){ return c.id === el.getAttribute('data-id'); });
+        if(card){ card.title = el.value; persist(); }
+      });
+    });
+    document.querySelectorAll('.note-input').forEach(function(el){
+      autoGrow(el);
+      el.addEventListener('input', function(){
+        var card = state.cards.find(function(c){ return c.id === el.getAttribute('data-id'); });
+        if(card){ card.note = el.value; }
+        autoGrow(el); persist();
+      });
+    });
+    document.querySelectorAll('.attach-btn').forEach(function(el){
+      el.addEventListener('click', function(){ pendingAttachCardId = el.getAttribute('data-id'); fileInput.value = ''; fileInput.click(); });
+    });
+    document.querySelectorAll('.remove-att-btn').forEach(function(el){
+      el.addEventListener('click', function(){
+        var card = state.cards.find(function(c){ return c.id === el.getAttribute('data-id'); });
+        var idx = parseInt(el.getAttribute('data-idx'), 10);
+        if(card){ card.attachments.splice(idx, 1); persist(); render(); }
+      });
+    });
+    document.querySelectorAll('.add-btn').forEach(function(el){
+      el.addEventListener('click', function(){
+        var newCard = { id: uid(), col: el.getAttribute('data-col'), title: 'Novo card', note: '', attachments: [] };
+        state.cards.push(newCard);
+        persist(); render();
+        var newInput = document.querySelector('.title-input[data-id="'+newCard.id+'"]');
+        if(newInput){ newInput.focus(); newInput.select(); }
+      });
+    });
+  }
+
+  fileInput.addEventListener('change', function(){
+    var file = fileInput.files && fileInput.files[0];
+    if(!file || !pendingAttachCardId) return;
+    if(file.size > MAX_ATTACHMENT_BYTES){
+      alert('Arquivo muito grande (limite ~600KB, por causa do limite de 1MB por documento no Firestore).');
+      return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(){
+      var card = state.cards.find(function(c){ return c.id === pendingAttachCardId; });
+      if(card){ card.attachments.push({ name: file.name, dataUrl: reader.result }); persist(); render(); }
+      pendingAttachCardId = null;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Sincronização em tempo real com o Firestore
+  onSnapshot(docRef, function(snap){
+    if(snap.exists()){
+      var data = snap.data();
+      state.cards = data.cards || [];
+    } else {
+      state.cards = defaultCards;
+      setDoc(docRef, { cards: state.cards, updatedAt: Date.now() });
+    }
+    render();
+    showSaved();
+  }, function(err){
+    saveIndicator.textContent = 'erro de sincronização: ' + err.message;
+  });
+}
+</script>
+</body>
+</html>
