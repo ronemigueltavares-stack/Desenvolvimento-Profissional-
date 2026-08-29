@@ -410,14 +410,24 @@ function initKanban(){
 
   // Sincronização em tempo real com o Firestore
   onSnapshot(docRef, function(snap){
+    // Ignora o "eco" da nossa própria escrita ainda não confirmada pelo servidor —
+    // re-renderizar aqui é o que tirava o foco do campo enquanto você digitava.
+    if(snap.metadata.hasPendingWrites) return;
+
     if(snap.exists()){
       var data = snap.data();
-      state.cards = data.cards || [];
+      var incoming = data.cards || [];
+      // Só re-renderiza se o conteúdo realmente mudou (ex: edição em outro dispositivo),
+      // nunca como eco do que este mesmo dispositivo acabou de salvar.
+      if(JSON.stringify(incoming) !== JSON.stringify(state.cards)){
+        state.cards = incoming;
+        render();
+      }
     } else {
       state.cards = defaultCards;
       setDoc(docRef, { cards: state.cards, updatedAt: Date.now() });
+      render();
     }
-    render();
     showSaved();
   }, function(err){
     saveIndicator.textContent = 'erro de sincronização: ' + err.message;
